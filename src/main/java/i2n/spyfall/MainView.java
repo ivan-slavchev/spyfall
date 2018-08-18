@@ -1,19 +1,19 @@
 package i2n.spyfall;
 
-import java.util.Map;
-
+import com.vaadin.data.provider.DataProvider;
 import com.vaadin.navigator.View;
-import com.vaadin.navigator.ViewChangeListener;
-import com.vaadin.server.ExternalResource;
 import com.vaadin.spring.annotation.SpringComponent;
 import com.vaadin.spring.annotation.SpringView;
 import com.vaadin.spring.annotation.UIScope;
 import com.vaadin.ui.*;
-import com.vaadin.ui.themes.ValoTheme;
+
+import org.apache.commons.lang3.RandomStringUtils;
 import org.springframework.beans.factory.annotation.Autowired;
-import org.springframework.context.annotation.Scope;
 
 import javax.annotation.PostConstruct;
+
+import i2n.spyfall.model.Game;
+import i2n.spyfall.model.GameStatus;
 
 @SpringView(name = MainView.VIEW_NAME)
 @SpringComponent(MainView.VIEW_NAME)
@@ -25,17 +25,26 @@ public class MainView extends VerticalLayout implements View {
     @Autowired
     private SharedData sharedData;
 
+    private Grid<Game> gamesGrid;
+
     @PostConstruct
     protected void init() {
         Button button = new Button("INCREASE COUNTER");
         button.addClickListener(clickEvent -> {
 
-            Map<String, Long> sharedDataMap = sharedData.getSharedDataMap();
-            sharedDataMap.putIfAbsent("test", 1L);
-
-            Notification.show(String.valueOf(sharedDataMap.get("test")));
-            sharedDataMap.put("test", sharedDataMap.get("test") + 1);
+            Game newGame = new Game();
+            newGame.setCode(RandomStringUtils.randomAlphanumeric(4).toLowerCase());
+            newGame.setStatus(GameStatus.CREATED);
+            sharedData.getGames()
+                .add(newGame);
+            gamesGrid.getDataProvider()
+                .refreshAll();
+            gamesGrid.recalculateColumnWidths();
         });
+
+        gamesGrid = new Grid<>(Game.class);
+        gamesGrid.setDataProvider(DataProvider.ofCollection(sharedData.getGames()));
+        addComponent(gamesGrid);
         addComponent(button);
     }
 }
