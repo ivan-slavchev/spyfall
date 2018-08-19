@@ -1,14 +1,16 @@
 package i2n.spyfall.model;
 
 import java.util.Collection;
+import java.util.HashSet;
 
 public class Game {
 
-    private GameStatus status;
+    private GameStatus status = GameStatus.CREATED;
     private String code;
     private String location;
-    private Collection<Player> players;
-    private Collection<Long> spies;
+    private Collection<Player> players = new HashSet<>();
+    private Collection<Player> spies = new HashSet<>();
+    private Collection<String> locations = new HashSet<>();
 
     public GameStatus getStatus() {
         return status;
@@ -42,11 +44,19 @@ public class Game {
         this.players = players;
     }
 
-    public Collection<Long> getSpies() {
+    public Collection<Player> getSpies() {
         return spies;
     }
 
-    public void setSpies(Collection<Long> spies) {
+    public void setSpies(Collection<Player> spies) {
         this.spies = spies;
+    }
+
+    public Collection<String> getLocations() {
+        return locations;
+    }
+
+    public void setLocations(Collection<String> locations) {
+        this.locations = locations;
     }
 }
