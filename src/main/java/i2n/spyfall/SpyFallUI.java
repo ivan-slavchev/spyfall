@@ -3,6 +3,7 @@ package i2n.spyfall;
 import com.vaadin.annotations.Push;
 import com.vaadin.annotations.Theme;
 import com.vaadin.annotations.Title;
+import com.vaadin.annotations.Viewport;
 import com.vaadin.server.VaadinRequest;
 import com.vaadin.spring.annotation.SpringUI;
 import com.vaadin.spring.navigator.SpringNavigator;
@@ -14,6 +15,7 @@ import org.springframework.beans.factory.annotation.Autowired;
 @Push
 @Theme("valo")
 @Title("Spyfall")
+@Viewport("width=device-width")
 public class SpyFallUI extends UI {
 
     @Autowired

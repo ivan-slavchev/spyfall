@@ -101,6 +101,13 @@ public class GameView extends VerticalLayout implements View, Broadcaster.Broadc
 
         addComponent(numberOfSpiesField);
         addComponent(startGameButton);
+        Button leaveGameButton = new Button("Leave game");
+        leaveGameButton.addClickListener(event -> {
+            game.getPlayers().removeIf(player -> player.getName()
+                .equals(playerName.getValue()));
+            navigator.navigateTo(MainView.VIEW_NAME);
+        });
+        addComponent(leaveGameButton);
     }
 
     private Collection<Player> getRandomSpies(int numberOfSpies) {

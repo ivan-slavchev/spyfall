@@ -12,12 +12,12 @@ import com.vaadin.ui.*;
 import com.vaadin.ui.themes.ValoTheme;
 
 import org.apache.commons.lang3.RandomStringUtils;
+import org.apache.commons.lang3.StringUtils;
 import org.springframework.beans.factory.annotation.Autowired;
 
 import javax.annotation.PostConstruct;
 
 import i2n.spyfall.model.Game;
-import i2n.spyfall.model.GameStatus;
 import i2n.spyfall.model.Player;
 
 @SpringView(name = MainView.VIEW_NAME)
@@ -45,16 +45,24 @@ public class MainView extends VerticalLayout implements View {
             VaadinService.getCurrentRequest()
                 .getWrappedSession()
                 .setAttribute("player", event.getValue());
-            sharedData.getUserUiMap().put(event.getValue(), UI.getCurrent());
+            sharedData.getUserUiMap()
+                .put(event.getValue(), UI.getCurrent());
         });
 
         Button createGameButton = new Button("Create new game");
         createGameButton.addStyleName(ValoTheme.BUTTON_SMALL);
         createGameButton.addClickListener(clickEvent -> {
 
+            if (StringUtils.isEmpty(getPlayerName())) {
+                Notification.show("Set player name", Notification.Type.WARNING_MESSAGE);
+                return;
+            }
+
             Game newGame = new Game();
-            newGame.setCode(RandomStringUtils.randomAlphanumeric(4).toLowerCase());
-            newGame.getPlayers().add(new Player(playerNameTextField.getValue()));
+            newGame.setCode(RandomStringUtils.randomAlphanumeric(4)
+                .toLowerCase());
+            newGame.getPlayers()
+                .add(new Player(playerNameTextField.getValue()));
             newGame.setLocations(sharedData.getDefaultLocations());
 
             sharedData.getGames()
@@ -66,7 +74,9 @@ public class MainView extends VerticalLayout implements View {
             navigateToGame(newGame.getCode());
         });
 
-        gamesGrid = new Grid<>(Game.class);
+        gamesGrid = new Grid<>();
+        gamesGrid.addColumn(Game::getCode)
+            .setExpandRatio(1);
         gamesGrid.setSizeFull();
         gamesGrid.setDataProvider(DataProvider.ofCollection(sharedData.getGames()));
 
@@ -85,7 +95,8 @@ public class MainView extends VerticalLayout implements View {
     }
 
     private void onJoinGame(Game game) {
-        game.getPlayers().add(new Player(playerNameTextField.getValue()));
+        game.getPlayers()
+            .add(new Player(playerNameTextField.getValue()));
         navigateToGame(game.getCode());
     }
 
@@ -95,13 +106,18 @@ public class MainView extends VerticalLayout implements View {
 
     @Override
     public void enter(ViewChangeListener.ViewChangeEvent event) {
-        String player = (String) VaadinService.getCurrentRequest()
-            .getWrappedSession()
-            .getAttribute("player");
+        String player = getPlayerName();
         if (player != null) {
             playerNameTextField.setValue(player);
         }
 
-        gamesGrid.getDataProvider().refreshAll();
+        gamesGrid.getDataProvider()
+            .refreshAll();
+    }
+
+    private String getPlayerName() {
+        return (String) VaadinService.getCurrentRequest()
+            .getWrappedSession()
+            .getAttribute("player");
     }
 }
