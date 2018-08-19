@@ -1,7 +1,6 @@
 package i2n.spyfall;
 
 import java.util.ArrayList;
-import java.util.Arrays;
 import java.util.Collection;
 import java.util.HashSet;
 import java.util.List;
@@ -9,27 +8,28 @@ import java.util.Random;
 
 import javax.annotation.PostConstruct;
 
-import org.apache.commons.lang3.RandomStringUtils;
 import org.springframework.beans.factory.annotation.Autowired;
 
+import com.vaadin.data.Binder;
+import com.vaadin.data.converter.StringToIntegerConverter;
 import com.vaadin.data.provider.DataProvider;
+import com.vaadin.data.validator.IntegerRangeValidator;
 import com.vaadin.navigator.Navigator;
 import com.vaadin.navigator.View;
 import com.vaadin.navigator.ViewChangeListener;
 import com.vaadin.server.VaadinService;
+import com.vaadin.shared.ui.grid.HeightMode;
 import com.vaadin.spring.annotation.SpringComponent;
 import com.vaadin.spring.annotation.SpringView;
 import com.vaadin.spring.annotation.UIScope;
 import com.vaadin.ui.Button;
 import com.vaadin.ui.Grid;
-import com.vaadin.ui.HorizontalLayout;
 import com.vaadin.ui.Label;
 import com.vaadin.ui.TextField;
 import com.vaadin.ui.UI;
 import com.vaadin.ui.VerticalLayout;
 
 import i2n.spyfall.model.Game;
-import i2n.spyfall.model.GameStatus;
 import i2n.spyfall.model.Player;
 
 @SpringView(name = GameView.VIEW_NAME)
@@ -45,18 +45,25 @@ public class GameView extends VerticalLayout implements View, Broadcaster.Broadc
     @Autowired
     private Navigator navigator;
 
+    private Binder<Integer> binder = new Binder<>();
+
     private Game game;
+    private Integer numberOfSpies = 1;
 
     private Label playerName = new Label();
     private Label gameCodeLabel = new Label();
     private Label location = new Label();
     private Grid<Player> players = new Grid<>(Player.class);
     private Grid<String> locations = new Grid<>();
+    private TextField numberOfSpiesField = new TextField("Number of spies");
     private Button startGameButton = new Button("Start game");
 
     @PostConstruct
     protected void init() {
         Broadcaster.register(this);
+
+        playerName.setCaption("Player");
+        addComponent(playerName);
 
         gameCodeLabel.setCaption("Game code");
         addComponent(gameCodeLabel);
@@ -66,21 +73,33 @@ public class GameView extends VerticalLayout implements View, Broadcaster.Broadc
 
         players.setCaption("Players");
         players.setWidth(100, Unit.PERCENTAGE);
-        players.setSelectionMode(Grid.SelectionMode.NONE);
+        players.setSelectionMode(Grid.SelectionMode.MULTI);
+        players.setHeightMode(HeightMode.ROW);
         addComponent(players);
 
         locations.setCaption("Locations");
         locations.setWidth(100, Unit.PERCENTAGE);
-        locations.setSelectionMode(Grid.SelectionMode.NONE);
+        locations.setSelectionMode(Grid.SelectionMode.MULTI);
         locations.addColumn(name -> name)
             .setCaption("Name");
+        locations.setHeightMode(HeightMode.ROW);
         addComponent(locations);
 
         startGameButton.addClickListener(event -> {
             game.setLocation(getRandomLocation());
-            game.setSpies(getRandomSpies(1));
+            game.setSpies(getRandomSpies(numberOfSpies));
             Broadcaster.broadcast(game.getCode());
         });
+
+        binder.forField(numberOfSpiesField)
+            .withConverter(new StringToIntegerConverter("Not a number"))
+            .withValidator(new IntegerRangeValidator("Not in range", 0, 5))
+            .asRequired()
+            .bind(source -> numberOfSpies, (bean, fieldValue) -> numberOfSpies = fieldValue);
+
+        binder.setBean(numberOfSpies);
+
+        addComponent(numberOfSpiesField);
         addComponent(startGameButton);
     }
 
@@ -115,22 +134,26 @@ public class GameView extends VerticalLayout implements View, Broadcaster.Broadc
             .getWrappedSession()
             .getAttribute("player");
 
+        if (player == null) {
+            navigator.navigateTo(MainView.VIEW_NAME);
+        }
+
+        game = sharedData.getGameByCode(event.getParameters());
         playerName.setValue(player);
 
-        String gameCode = event.getParameters();
-
-        game = sharedData.getGameByCode(gameCode);
-
-        if (game == null) {
+        if (game == null || player == null) {
             navigator.navigateTo(MainView.VIEW_NAME);
             return;
         }
 
-        gameCodeLabel.setValue(gameCode);
+        game.getPlayers()
+            .add(new Player(player));
+
+        gameCodeLabel.setValue(game.getCode());
         players.setDataProvider(DataProvider.ofCollection(game.getPlayers()));
         locations.setDataProvider(DataProvider.ofCollection(game.getLocations()));
 
-        Broadcaster.broadcast(gameCode);
+        Broadcaster.broadcast(game.getCode());
     }
 
     @Override
@@ -142,8 +165,15 @@ public class GameView extends VerticalLayout implements View, Broadcaster.Broadc
                     return;
                 }
 
-                players.getDataProvider().refreshAll();
-                locations.getDataProvider().refreshAll();
+                players.getDataProvider()
+                    .refreshAll();
+                players.setHeightByRows(game.getPlayers()
+                    .size());
+
+                locations.getDataProvider()
+                    .refreshAll();
+                locations.setHeightByRows(game.getLocations()
+                    .size());
 
                 boolean isSpy = game.getSpies()
                     .stream()
